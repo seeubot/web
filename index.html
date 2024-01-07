@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEEULIVE</title>
+    <title>BOX-STREAM</title>
     <style>
         body {
-            background-image: url("https://i.postimg.cc/s2stC4nG/wallpaperflare-com-wallpaper-1.jpg");
-            background-color: #cccccc;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
             color: #fff;
             margin: 0;
             padding: 0;
@@ -26,7 +25,7 @@
 
         .header h1 {
             margin: 0;
-            color: #000000;
+            color: #4caf50;
         }
 
         .input-group {
@@ -48,10 +47,10 @@
             padding: 10px 20px;
             border: none;
             border-radius: 5px;
-            background-color: #000000;
+            background-color: #4caf50;
             color: white;
             cursor: pointer;
-            box-shadow: 0 4px #000000;
+            box-shadow: 0 4px #2e7d32;
             margin: 5px;
             transition: all 0.3s ease;
         }
@@ -76,7 +75,7 @@
         }
         
         video {
-            width: auto; /* Full width of the container */
+            width: 100%; /* Full width of the container */
             height: auto; /* Height is set automatically to maintain aspect ratio */
             max-height: 80vh; /* Optional: set a max-height to ensure it fits within the viewport */
             border-radius: 5px;
@@ -87,10 +86,12 @@
 </head>
 <body>
     <div class="header">
-    </div> 
+        <h1>BOX-STREAM</h1>
+    </div>
+
     <div class="input-group">
-        <input type="text" id="urlInput" placeholder="Video Url">
-        <button id="fetchButton">Get Video</button>
+        <input type="text" id="urlInput" placeholder="Enter URL here">
+        <button id="fetchButton">Fetch Video Link</button>
     </div>
 
     <div class="video-container" id="videoContainer">
@@ -105,7 +106,7 @@
         document.getElementById('fetchButton').addEventListener('click', async () => {
             const urlInput = document.getElementById('urlInput').value;
             if (!urlInput) {
-                alert('enter a URL.');
+                alert('Please enter a URL.');
                 return;
             }
 
