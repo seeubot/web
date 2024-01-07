@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOX-STREAM</title>
+    <title>SEEUTECH</title>
     <style>
         body {
             background-image: url('https://i.postimg.cc/sgyj67R1/wallpaperflare-com-wallpaper-2.jpg');
@@ -22,7 +22,7 @@
         }
 
         .header {
-            text-align: center;
+            text-align: right;
             margin: 20px 0;
         }
 
@@ -78,9 +78,9 @@
         }
         
         video {
-            width: 100%; /* Full width of the container */
+            width: auto; /* Full width of the container */
             height: auto; /* Height is set automatically to maintain aspect ratio */
-            max-height: 80vh; /* Optional: set a max-height to ensure it fits within the viewport */
+            max-height: auto; /* Optional: set a max-height to ensure it fits within the viewport */
             border-radius: 5px;
         }        
 
@@ -89,12 +89,12 @@
 </head>
 <body>
     <div class="header">
-        <h1>BOX-STREAM</h1>
+        <h1>SAY MY NAME</h1>
     </div>
 
     <div class="input-group">
-        <input type="text" id="urlInput" placeholder="Enter URL here">
-        <button id="fetchButton">Fetch Video Link</button>
+        <input type="text" id="urlInput" placeholder="Enter URL">
+        <button id="fetchButton">Get Video</button>
     </div>
 
     <div class="video-container" id="videoContainer">
@@ -103,8 +103,8 @@
         </video>
     </div>
 
-    <button id="playButton" style="display: none;">Play Video</button>
-    <button id="downloadButton" style="display: none;">Download Video</button>
+    <button id="playButton" style="display: none;">Play</button>
+    <button id="downloadButton" style="display: none;">Download</button>
     <script>
         document.getElementById('fetchButton').addEventListener('click', async () => {
             const urlInput = document.getElementById('urlInput').value;
