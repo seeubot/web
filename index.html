@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SEEUTECH</title>
+    <title>BOX-STREAM</title>
     <style>
         body {
-            background-image: url('https://i.postimg.cc/sgyj67R1/wallpaperflare-com-wallpaper-2.jpg');
-            background-repeat: no-repeat;
-            background-size: 100% 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #1a1a1a;
             color: #fff;
@@ -22,7 +19,7 @@
         }
 
         .header {
-            text-align: right;
+            text-align: center;
             margin: 20px 0;
         }
 
@@ -78,9 +75,9 @@
         }
         
         video {
-            width: auto; /* Full width of the container */
+            width: 100%; /* Full width of the container */
             height: auto; /* Height is set automatically to maintain aspect ratio */
-            max-height: auto; /* Optional: set a max-height to ensure it fits within the viewport */
+            max-height: 80vh; /* Optional: set a max-height to ensure it fits within the viewport */
             border-radius: 5px;
         }        
 
@@ -89,12 +86,12 @@
 </head>
 <body>
     <div class="header">
-        <h1>SAY MY NAME</h1>
+        <h1>BOX-STREAM</h1>
     </div>
 
     <div class="input-group">
-        <input type="text" id="urlInput" placeholder="Enter URL">
-        <button id="fetchButton">Get Video</button>
+        <input type="text" id="urlInput" placeholder="Enter URL here">
+        <button id="fetchButton">Fetch Video Link</button>
     </div>
 
     <div class="video-container" id="videoContainer">
@@ -103,8 +100,8 @@
         </video>
     </div>
 
-    <button id="playButton" style="display: none;">Play</button>
-    <button id="downloadButton" style="display: none;">Download</button>
+    <button id="playButton" style="display: none;">Play Video</button>
+    <button id="downloadButton" style="display: none;">Download Video</button>
     <script>
         document.getElementById('fetchButton').addEventListener('click', async () => {
             const urlInput = document.getElementById('urlInput').value;
@@ -114,7 +111,7 @@
             }
 
             try {
-                const response = await fetch('https://boxstream.thejuniortest.workers.dev/?url=${encodeURIComponent(urlInput)}`);
+                const response = await fetch(`https://boxstream.thejuniortest.workers.dev/?url=${encodeURIComponent(urlInput)}`);
                 const data = await response.json();
 
                 if (data.ok && data.downloadLink) {
