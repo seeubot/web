@@ -3,14 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced DPlayer</title>
+    <title>Advanced HLS Video Player</title>
     <!-- Use Tailwind CSS for modern, responsive styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- DPlayer and HLS.js libraries -->
-    <link href="https://cdn.jsdelivr.net/npm/dplayer/dist/DPlayer.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dplayer@1.27.0/dist/DPlayer.min.js"></script>
-
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -24,7 +20,6 @@
             margin: 0;
             padding: 1rem;
         }
-
         .container {
             width: 100%;
             max-width: 900px;
@@ -34,72 +29,107 @@
             padding: 1.5rem;
             transition: all 0.3s ease-in-out;
         }
-
         h1 {
             background: linear-gradient(90deg, #63b3ed, #9f7aea);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 700;
         }
-        
-        /* Dropdown styles */
-        .dropdown {
-            position: relative;
-            display: inline-block;
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            border-top: 4px solid #63b3ed;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        .dropdown-content {
-            display: none;
+        /* Episode list specific styling */
+        #episode-list-container {
             position: absolute;
-            background-color: #4a5568;
-            min-width: 160px;
-            box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
-            z-index: 10;
-            border-radius: 0.75rem;
-            max-height: 250px;
+            top: 1rem;
+            right: 1rem;
+            max-height: 200px;
             overflow-y: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 0.75rem;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 20;
+            transition: all 0.3s ease;
+            transform-origin: top right;
+            transform: scale(0);
         }
-
-        .dropdown-content a {
-            color: white;
-            padding: 12px 16px;
-            text-decoration: none;
+        #episode-list-container.show {
+            transform: scale(1);
+        }
+        .episode-button {
+            padding: 0.5rem 1rem;
+            text-align: left;
+            width: 100%;
             display: block;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            color: #e2e8f0;
             transition: background-color 0.2s;
         }
-
-        .dropdown-content a:hover {
-            background-color: #63b3ed;
+        .episode-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
         }
-
-        .dropdown:hover .dropdown-content {
-            display: block;
+        
+        /* Custom settings menu styling */
+        #custom-settings-menu {
+            position: absolute;
+            bottom: 4rem; /* Adjust to be above player controls */
+            right: 1rem;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            z-index: 20;
+            transform-origin: bottom right;
+            transform: scale(0);
+            transition: transform 0.2s ease-in-out;
+        }
+        #custom-settings-menu.show {
+            transform: scale(1);
+        }
+        .settings-heading {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid #4a5568;
+        }
+        .settings-option {
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .settings-option:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .settings-option.active {
+            background-color: #63b3ed;
+            color: white;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1 class="text-3xl sm:text-4xl text-center mb-6">Advanced DPlayer</h1>
+        <h1 class="text-3xl sm:text-4xl text-center mb-6">Advanced HLS Video Player</h1>
 
-        <!-- Input and dropdown area for custom URLs -->
+        <!-- Input and button area -->
         <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
-            <div class="dropdown">
-                <button class="px-6 py-3 font-semibold text-white bg-green-500 rounded-lg shadow-md hover:bg-green-600 transition-colors dropbtn">
-                    Select Source
-                </button>
-                <div id="source-dropdown" class="dropdown-content">
-                    <!-- Dynamic sources will be inserted here -->
-                </div>
-            </div>
-
             <input
                 id="url-input"
                 type="text"
                 placeholder="Paste HLS video URL here (e.g., .m3u8)"
+                value="http://weekly-susie-school1660440-9f75b68d.koyeb.app/dl/68985d205de096b7841b89f9"
                 class="flex-grow w-full sm:w-auto p-3 text-gray-200 bg-gray-700 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-blue-400 transition-colors"
             />
             <button
@@ -110,75 +140,292 @@
             </button>
         </div>
 
-        <!-- DPlayer container -->
-        <div id="dplayer" class="rounded-xl overflow-hidden shadow-lg"></div>
+        <!-- Video player container -->
+        <div id="player-container" class="relative">
+            <!-- Loading and error message display -->
+            <div id="status-message" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 rounded-xl z-10 hidden">
+                <div id="loading-spinner" class="loading-spinner hidden"></div>
+                <p id="message-text" class="text-lg font-medium text-white ml-4 hidden"></p>
+            </div>
+
+            <!-- Episode List Container -->
+            <button id="episode-toggle" class="absolute top-4 right-4 p-2 bg-gray-800 text-white rounded-lg shadow-md z-30 transition-colors hover:bg-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-video"><path d="M12 12H3"/><path d="M16 6H3"/><path d="M18 18H3"/><path d="m17 12 5 3-5 3V12Z"/></svg>
+            </button>
+            <div id="episode-list-container">
+                <div class="p-4">
+                    <h3 class="text-xl font-bold mb-2">Episodes</h3>
+                    <ul id="episode-list"></ul>
+                </div>
+            </div>
+
+            <!-- Video element with Plyr UI -->
+            <video id="player" playsinline controls class="w-full h-auto rounded-xl shadow-lg"></video>
+            
+            <!-- Custom Settings Menu -->
+            <div id="custom-settings-menu" class="hidden">
+                <div id="quality-options" class="mb-4">
+                    <div class="settings-heading">Quality</div>
+                </div>
+                <div id="audio-options" class="mb-4">
+                    <div class="settings-heading">Audio Tracks</div>
+                </div>
+                <div id="ratio-options">
+                    <div class="settings-heading">Screen Ratio</div>
+                    <div class="flex flex-col space-y-2 mt-2">
+                        <div class="settings-option active" data-ratio="fits">Fits</div>
+                        <div class="settings-option" data-ratio="fill">Fill</div>
+                        <div class="settings-option" data-ratio="crop">Crop</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- HLS.js library for handling HTTP Live Streaming -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Plyr.js library for the video player UI -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('player');
             const urlInput = document.getElementById('url-input');
             const loadButton = document.getElementById('load-button');
-            const sourceDropdown = document.getElementById('source-dropdown');
-            const dplayerElement = document.getElementById('dplayer');
+            const statusMessage = document.getElementById('status-message');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const messageText = document.getElementById('message-text');
+            const episodeListContainer = document.getElementById('episode-list-container');
+            const episodeToggle = document.getElementById('episode-toggle');
+            const episodeList = document.getElementById('episode-list');
 
-            // Hardcoded list of example sources for the dropdown
-            const exampleSources = [
-                { name: 'Default Stream', url: 'http://weekly-susie-school1660440-9f75b68d.koyeb.app/dl/68985d205de096b7841b89f9' },
-                { name: 'Big Buck Bunny (HLS)', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
-                { name: 'Apple Test Stream (HLS)', url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_gallery_ad_2.m3u8' },
-            ];
+            const customSettingsMenu = document.getElementById('custom-settings-menu');
+            const qualityOptions = document.getElementById('quality-options');
+            const audioOptions = document.getElementById('audio-options');
+            const ratioOptions = document.getElementById('ratio-options');
+
+            let plyrInstance = null;
+            let hlsInstance = null;
+            let settingsButton = null; // Reference to the Plyr settings button
             
-            let dp = null;
+            // Function to display a status message
+            const showStatus = (text, isError = false) => {
+                statusMessage.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                messageText.classList.remove('hidden');
+                messageText.textContent = text;
+                messageText.style.color = isError ? '#f87171' : '#e2e8f0';
+            };
 
-            // Function to initialize DPlayer with a given URL
-            const initDPlayer = (url) => {
-                // Destroy existing instance to prevent memory leaks and conflicts
-                if (dp) {
-                    dp.destroy();
+            // Function to show the loading state
+            const showLoading = () => {
+                statusMessage.classList.remove('hidden');
+                loadingSpinner.classList.remove('hidden');
+                messageText.classList.remove('hidden');
+                messageText.textContent = 'Loading video...';
+                messageText.style.color = '#e2e8f0';
+            };
+
+            // Function to hide all status messages
+            const hideStatus = () => {
+                statusMessage.classList.add('hidden');
+            };
+            
+            // Function to populate the settings menu with quality levels and audio tracks
+            const populateSettingsMenu = () => {
+                if (!hlsInstance) return;
+
+                // Clear previous options
+                qualityOptions.querySelectorAll('div:not(.settings-heading)').forEach(el => el.remove());
+                audioOptions.querySelectorAll('div:not(.settings-heading)').forEach(el => el.remove());
+
+                // Populate Quality options
+                if (hlsInstance.levels.length > 0) {
+                    hlsInstance.levels.forEach((level, index) => {
+                        const option = document.createElement('div');
+                        const resolution = level.height ? `${level.height}p` : 'Auto';
+                        option.textContent = resolution;
+                        option.classList.add('settings-option', 'py-1', 'px-2', 'rounded-md', 'cursor-pointer');
+                        if (index === hlsInstance.currentLevel) {
+                            option.classList.add('active');
+                        }
+                        option.addEventListener('click', () => {
+                            hlsInstance.currentLevel = index;
+                            qualityOptions.querySelectorAll('.settings-option').forEach(el => el.classList.remove('active'));
+                            option.classList.add('active');
+                        });
+                        qualityOptions.appendChild(option);
+                    });
+                } else {
+                    const info = document.createElement('div');
+                    info.textContent = 'No quality options.';
+                    info.classList.add('text-sm', 'text-gray-400', 'py-1', 'px-2');
+                    qualityOptions.appendChild(info);
                 }
 
-                dp = new DPlayer({
-                    container: dplayerElement,
-                    autoplay: true,
-                    lang: 'en',
-                    theme: '#FADFA3',
-                    video: {
-                        url: url,
-                        type: 'hls',
-                        // hls.js is automatically used for 'hls' type
-                    },
-                });
+                // Populate Audio Tracks
+                if (hlsInstance.audioTracks.length > 1) {
+                    hlsInstance.audioTracks.forEach((track, index) => {
+                        const option = document.createElement('div');
+                        option.textContent = track.name;
+                        option.classList.add('settings-option', 'py-1', 'px-2', 'rounded-md', 'cursor-pointer');
+                        if (index === hlsInstance.audioTrack) {
+                            option.classList.add('active');
+                        }
+                        option.addEventListener('click', () => {
+                            hlsInstance.audioTrack = index;
+                            audioOptions.querySelectorAll('.settings-option').forEach(el => el.classList.remove('active'));
+                            option.classList.add('active');
+                        });
+                        audioOptions.appendChild(option);
+                    });
+                } else {
+                    const info = document.createElement('div');
+                    info.textContent = 'No additional audio tracks.';
+                    info.classList.add('text-sm', 'text-gray-400', 'py-1', 'px-2');
+                    audioOptions.appendChild(info);
+                }
+            };
+            
+            // Function to populate the episode list dynamically
+            const populateEpisodes = () => {
+                // Placeholder for episode data - this would come from an API in a real-world scenario
+                const episodes = [
+                    { name: 'Episode 1: The Beginning', url: 'http://weekly-susie-school1660440-9f75b68d.koyeb.app/dl/68985d205de096b7841b89f9' },
+                    { name: 'Episode 2: The Journey', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+                    { name: 'Episode 3: The Climax', url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_gallery_ad_2.m3u8' },
+                ];
+                
+                // Clear existing list
+                episodeList.innerHTML = '';
 
-                // Add an error handler
-                dp.on('error', () => {
-                    console.error('DPlayer encountered an error with the stream.');
-                    alert('Error: Could not load the video stream. Please check the URL.');
+                // Populate with new data
+                episodes.forEach(ep => {
+                    const li = document.createElement('li');
+                    const button = document.createElement('button');
+                    button.textContent = ep.name;
+                    button.classList.add('episode-button');
+                    button.addEventListener('click', () => {
+                        urlInput.value = ep.url;
+                        loadVideo(ep.url);
+                        episodeListContainer.classList.remove('show');
+                    });
+                    li.appendChild(button);
+                    episodeList.appendChild(li);
                 });
             };
 
-            // Populate the dropdown with example sources
-            exampleSources.forEach(source => {
-                const link = document.createElement('a');
-                link.href = '#';
-                link.textContent = source.name;
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    urlInput.value = source.url;
-                    initDPlayer(source.url);
-                };
-                sourceDropdown.appendChild(link);
+            // Main function to load the video
+            const loadVideo = (url) => {
+                if (!url) {
+                    showStatus('Please enter a valid video URL.', true);
+                    return;
+                }
+
+                // Destroy existing instances to prevent conflicts
+                if (plyrInstance) {
+                    plyrInstance.destroy();
+                    plyrInstance = null;
+                }
+                if (hlsInstance) {
+                    hlsInstance.destroy();
+                    hlsInstance = null;
+                }
+
+                // Show loading spinner
+                showLoading();
+
+                if (Hls.isSupported()) {
+                    hlsInstance = new Hls();
+                    hlsInstance.attachMedia(video);
+
+                    hlsInstance.on(Hls.Events.MEDIA_ATTACHED, function () {
+                        hlsInstance.loadSource(url);
+                    });
+
+                    // Listen for HLS stream errors for robust playback
+                    hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                        if (data.fatal) {
+                            showStatus(`Error: ${data.details}. Trying to recover...`, true);
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    hlsInstance.recoverMediaError();
+                                    break;
+                                default:
+                                    hlsInstance.destroy();
+                                    break;
+                            }
+                        }
+                    });
+
+                    hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
+                        console.log('Manifest parsed. Initializing Plyr...');
+                        hideStatus(); // Hide loading message
+                        plyrInstance = new Plyr(video, {
+                            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen', 'settings'],
+                            settings: ['speed'], // We will handle quality and audio with our custom menu
+                            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
+                        });
+
+                        // Set a ref to the Plyr settings button
+                        settingsButton = document.querySelector('.plyr__controls .plyr__controls__item--settings');
+                        if (settingsButton) {
+                            settingsButton.addEventListener('click', () => {
+                                customSettingsMenu.classList.toggle('show');
+                            });
+                        }
+                        
+                        // Dynamically populate settings and episodes after manifest is parsed
+                        populateSettingsMenu();
+                        populateEpisodes();
+                    });
+
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = url;
+                    plyrInstance = new Plyr(video, {
+                        controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+                    });
+                    hideStatus();
+                } else {
+                    showStatus('HLS streaming is not supported on this browser.', true);
+                }
+            };
+            
+            // Event listeners
+            loadButton.addEventListener('click', () => {
+                loadVideo(urlInput.value);
             });
 
-            // Handle the manual load button click
-            loadButton.addEventListener('click', () => {
-                initDPlayer(urlInput.value);
+            episodeToggle.addEventListener('click', () => {
+                episodeListContainer.classList.toggle('show');
+            });
+
+            // Screen Ratio event listeners
+            ratioOptions.addEventListener('click', (e) => {
+                const target = e.target;
+                if (target.classList.contains('settings-option')) {
+                    const ratio = target.dataset.ratio;
+                    ratioOptions.querySelectorAll('.settings-option').forEach(el => el.classList.remove('active'));
+                    target.classList.add('active');
+
+                    switch(ratio) {
+                        case 'fits':
+                            video.style.objectFit = 'contain';
+                            break;
+                        case 'fill':
+                            video.style.objectFit = 'fill';
+                            break;
+                        case 'crop':
+                            video.style.objectFit = 'cover';
+                            break;
+                    }
+                }
             });
             
-            // Set the initial URL in the input field
-            urlInput.value = exampleSources[0].url;
-
-            // Initialize the player with the default URL on page load
-            initDPlayer(urlInput.value);
+            // Initial load of the default video and episodes
+            loadVideo(urlInput.value);
+            populateEpisodes();
         });
     </script>
 </body>
