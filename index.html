@@ -3,552 +3,967 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced HLS Video Player</title>
-    <!-- Use Tailwind CSS for modern, responsive styling -->
+    <title>StreamVault - Your Media Library</title>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <!-- Custom styles for a cleaner look -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a202c; /* Dark background */
-            color: #e2e8f0;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Centering the main content container */
+        .main-container {
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
+            flex-grow: 1;
             padding: 1rem;
         }
-        .container {
+
+        .search-input-container {
             width: 100%;
-            max-width: 900px;
-            background-color: #2d3748; /* Dark container background */
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            padding: 1.5rem;
-            transition: all 0.3s ease-in-out;
+            max-width: 7xl;
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: center;
         }
-        h1 {
-            background: linear-gradient(90deg, #63b3ed, #9f7aea);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 700;
+
+        /* Custom scrollbar for the episode selector */
+        .episode-selector::-webkit-scrollbar {
+            width: 8px;
         }
+        .episode-selector::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        .episode-selector::-webkit-scrollbar-thumb {
+            background-color: #4ecdc4;
+            border-radius: 20px;
+            border: 2px solid #1f2937;
+        }
+        .episode-selector {
+            scrollbar-width: thin;
+            scrollbar-color: #4ecdc4 #1f2937;
+        }
+
+        .media-card {
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .media-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-input:focus {
+            border-color: #4ecdc4;
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.02);
+            box-shadow: 0 0 30px rgba(78, 205, 196, 0.3);
+        }
+
+        .video-player-modal {
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .player-container {
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .close-player:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(90deg);
+        }
+
+        .episode-btn:hover {
+            background: rgba(78, 205, 196, 0.2);
+            border-color: #4ecdc4;
+        }
+        
+        /* Styles for the full-screen video player UI */
+        .video-ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            background: #000;
+            z-index: 50;
+        }
+        .video-player-wrapper {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            flex-direction: column;
+        }
+        
+        .episode-list-item.active,
+        .tab-button.active,
+        .focusable:focus,
+        .video-control-btn:focus,
+        .episode-list-item:focus {
+            outline: 2px solid #4ecdc4;
+            outline-offset: 2px;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        /* Custom video controls styling */
+        .custom-video-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #fff;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 100; /* Ensure controls are above other overlays */
+        }
+
+        .show-controls .custom-video-controls {
+            opacity: 1;
+        }
+
+        .seek-bar-container {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .seek-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .seek-bar-filled {
+            height: 100%;
+            background-color: #4ecdc4;
+            border-radius: 4px;
+            width: 0%;
+        }
+
+        /* Video info overlay on pause */
+        .video-info-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none; /* Initially hidden */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            text-align: center;
+            z-index: 20;
+            padding: 1rem;
+        }
+
+        .video-info-overlay.visible {
+            display: flex;
+        }
+        
+        /* Error Dialog styles */
+        .error-dialog {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2d3748;
+            color: #fff;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            z-index: 200;
+            display: none;
+            text-align: center;
+        }
+        
+        .error-dialog.visible {
+            display: block;
+        }
+
+        /* Episode list overlay within the player */
+        .episode-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 150;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            padding: 2rem;
+        }
+        .episode-overlay.visible {
+            display: flex;
+        }
+        
+        /* Loading spinner animation */
         .loading-spinner {
-            border: 4px solid rgba(255, 255, 255, 0.2);
-            border-top: 4px solid #63b3ed;
+            border: 6px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            border-top: 6px solid #4ecdc4;
+            width: 60px;
+            height: 60px;
             animation: spin 1s linear infinite;
+            position: absolute;
+            z-index: 30;
+            top: 50%;
+            left: 50%;
+            margin-top: -30px;
+            margin-left: -30px;
+            display: none; /* Initially hidden */
         }
+        .loading-spinner.visible {
+            display: block;
+        }
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
 
-        /* Episode list specific styling */
-        #episode-list-container {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            max-height: 200px;
-            overflow-y: auto;
-            background-color: rgba(0, 0, 0, 0.7);
-            border-radius: 0.75rem;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            z-index: 20;
-            transition: all 0.3s ease;
-            transform-origin: top right;
-            transform: scale(0);
-        }
-        #episode-list-container.show {
-            transform: scale(1);
-        }
-        .episode-button {
-            padding: 0.5rem 1rem;
-            text-align: left;
-            width: 100%;
-            display: block;
-            color: #e2e8f0;
-            transition: background-color 0.2s;
-        }
-        .episode-button:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        
-        /* Custom settings menu styling */
-        #custom-settings-menu {
-            position: absolute;
-            bottom: 4rem; /* Adjust to be above player controls */
-            right: 1rem;
-            background-color: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            border-radius: 0.75rem;
-            padding: 0.75rem;
-            z-index: 20;
-            transform-origin: bottom right;
-            transform: scale(0);
-            transition: transform 0.2s ease-in-out;
-        }
-        #custom-settings-menu.show {
-            transform: scale(1);
-        }
-        .settings-heading {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            padding-bottom: 0.25rem;
-            border-bottom: 1px solid #4a5568;
-        }
-        .settings-option {
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .settings-option:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        .settings-option.active {
-            background-color: #63b3ed;
-            color: white;
+        @media (max-width: 1024px) {
+            .video-ui-container {
+                flex-direction: column;
+            }
+            .video-player-wrapper {
+                width: 100%;
+                height: 50%; /* Adjust as needed */
+            }
+            .video-player-sidebar {
+                width: 100%;
+                height: 50%;
+            }
         }
 
-        /* Screen Lock button styling */
-        #screen-lock-button {
-            position: absolute;
-            bottom: 1rem;
-            left: 1rem;
-            z-index: 30;
-            padding: 0.5rem;
-            cursor: pointer;
-            border-radius: 0.5rem;
-            background-color: rgba(0, 0, 0, 0.5);
-            transition: background-color 0.2s;
+        /* New CSS for video object-fit */
+        .video-fit-fill {
+            object-fit: fill;
         }
-        #screen-lock-button:hover {
-            background-color: rgba(255, 255, 255, 0.2);
+        .video-fit-contain {
+            object-fit: contain;
         }
-        
-        /* Custom controls for rewind/forward */
-        .custom-seek-button {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 15;
-            padding: 1.5rem;
-            background-color: rgba(0, 0, 0, 0.4);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.2s ease-in-out;
+        .video-fit-cover {
+            object-fit: cover;
         }
-        #player-container:hover .custom-seek-button, .custom-seek-button.show {
-            opacity: 1;
-        }
-        .plyr--fullscreen .custom-seek-button {
-            padding: 2rem;
-        }
-
-        .custom-seek-button-rewind { left: 5%; }
-        .custom-seek-button-forward { right: 5%; }
-
-        /* Lock state styling */
-        .player-locked .plyr__controls {
-            opacity: 0;
-            pointer-events: none;
-        }
-        .player-locked #screen-lock-button {
-            background-color: rgba(99, 179, 237, 0.7); /* Blue background when locked */
-        }
-        .player-locked .custom-seek-button {
-            opacity: 0; /* Hide custom controls when locked */
+        .video-fit-auto {
+            object-fit: auto;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-900 text-gray-200 min-h-screen p-4">
 
-    <div class="container">
-        <h1 class="text-3xl sm:text-4xl text-center mb-6">Advanced HLS Video Player</h1>
+    <!-- Search Bar Section - Always visible, now centered vertically and horizontally -->
+    <div id="search-container" class="main-container">
+        <input type="text" id="search-input" data-focusable="true" placeholder="Search for movies or series..." class="focusable w-full max-w-xl p-4 text-xl rounded-full bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+    </div>
 
-        <!-- Input and button area -->
-        <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
-            <input
-                id="url-input"
-                type="text"
-                placeholder="Paste HLS video URL here (e.g., .m3u8)"
-                value="http://weekly-susie-school1660440-9f75b68d.koyeb.app/dl/68985d205de096b7841b89f9"
-                class="flex-grow w-full sm:w-auto p-3 text-gray-200 bg-gray-700 border-2 border-gray-600 rounded-lg focus:outline-none focus:border-blue-400 transition-colors"
-            />
-            <button
-                id="load-button"
-                class="w-full sm:w-auto px-6 py-3 font-semibold text-white bg-blue-500 rounded-lg shadow-md hover:bg-blue-600 transition-colors"
-            >
-                Load Video
-            </button>
+    <!-- Main Content Area - Initially Hidden -->
+    <div id="content-area" class="hidden w-full max-w-7xl mx-auto flex-grow">
+        <!-- Header Section - Initially Hidden -->
+        <header id="header-container" class="hidden flex flex-col md:flex-row items-center justify-between pb-8 border-b border-gray-700 mb-8 w-full">
+            <h1 class="text-4xl font-extrabold text-white">Media Manager</h1>
+            <div id="stats-container" class="flex items-center space-x-4 mt-4 md:mt-0">
+                <!-- Stats will be dynamically injected here by JavaScript -->
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="flex space-x-4 mb-8 border-b border-gray-700">
+            <button id="movies-tab" data-focusable="true" class="focusable tab-button py-2 px-4 text-lg font-medium text-white border-b-2 border-teal-400">Movies</button>
+            <button id="series-tab" data-focusable="true" class="focusable tab-button py-2 px-4 text-lg font-medium text-gray-400 hover:text-gray-200">Series</button>
         </div>
 
-        <!-- Video player container -->
-        <div id="player-container" class="relative">
-            <!-- Loading and error message display -->
-            <div id="status-message" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 rounded-xl z-10 hidden">
-                <div id="loading-spinner" class="loading-spinner hidden"></div>
-                <p id="message-text" class="text-lg font-medium text-white ml-4 hidden"></p>
-            </div>
+        <!-- Loading and Error messages -->
+        <div id="loading-message" class="flex items-center justify-center py-12">
+            <p class="text-xl font-medium">Loading data...</p>
+        </div>
 
-            <!-- Episode List Container -->
-            <button id="episode-toggle" class="absolute top-4 right-4 p-2 bg-gray-800 text-white rounded-lg shadow-md z-30 transition-colors hover:bg-gray-700">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-video"><path d="M12 12H3"/><path d="M16 6H3"/><path d="M18 18H3"/><path d="m17 12 5 3-5 3V12Z"/></svg>
-            </button>
-            <div id="episode-list-container">
-                <div class="p-4">
-                    <h3 class="text-xl font-bold mb-2">Episodes</h3>
-                    <ul id="episode-list"></ul>
-                </div>
-            </div>
+        <div id="error-message" class="hidden text-center text-red-400 p-4 text-xl">
+            <p>Failed to fetch data from the API. Please check if the backend is running.</p>
+        </div>
 
-            <!-- Custom 10-second rewind/forward buttons -->
-            <button id="rewind-button" class="custom-seek-button custom-seek-button-rewind">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 19l-7-7 7-7"/><path d="M11 12H20"/><path d="M20 19v-2"/><path d="M20 7V5"/>
-                </svg>
-            </button>
-            <button id="forward-button" class="custom-seek-button custom-seek-button-forward">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M13 5l7 7-7 7"/><path d="M13 12H4"/><path d="M4 19v-2"/><path d="M4 7V5"/>
-                </svg>
-            </button>
+        <!-- Media content will be rendered here by JavaScript -->
+        <div id="media-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+    </div>
 
-            <!-- Video element with Plyr UI -->
-            <video id="player" playsinline controls class="w-full h-auto rounded-xl shadow-lg"></video>
+    <!-- Video Player Modal -->
+    <div id="videoModal" class="hidden video-ui-container">
+        <!-- Video Player Section -->
+        <div id="videoPlayerWrapper" class="video-player-wrapper">
+            <button id="closePlayerBtn" class="absolute top-4 right-4 text-white text-3xl font-bold z-20 p-2 bg-gray-900 rounded-full hover:bg-gray-700 transition-colors" data-focusable="true">✕</button>
             
-            <!-- Custom Settings Menu -->
-            <div id="custom-settings-menu" class="hidden">
-                <div id="quality-options" class="mb-4">
-                    <div class="settings-heading">Quality</div>
+            <!-- Video Info Overlay (hidden by default) -->
+            <div id="videoInfoOverlay" class="video-info-overlay">
+                <img id="videoInfoThumbnail" src="" alt="Thumbnail" class="w-64 h-96 object-cover rounded-xl shadow-lg mb-4">
+                <h3 id="videoInfoTitle" class="text-3xl font-bold text-white"></h3>
+            </div>
+
+            <!-- Episode list overlay (hidden by default) -->
+            <div id="episodeOverlay" class="episode-overlay">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold">Episodes</h3>
+                    <button id="closeEpisodeOverlayBtn" class="text-white text-3xl font-bold p-2 hover:bg-gray-700 rounded-full transition-colors" data-focusable="true">✕</button>
                 </div>
-                <div id="audio-options" class="mb-4">
-                    <div class="settings-heading">Audio Tracks</div>
+                <div id="episodeSelector" class="flex-grow overflow-y-auto">
+                    <!-- Episodes will be dynamically injected here -->
                 </div>
-                <div id="ratio-options">
-                    <div class="settings-heading">Screen Ratio</div>
-                    <div class="flex flex-col space-y-2 mt-2">
-                        <div class="settings-option active" data-ratio="fits">Fits</div>
-                        <div class="settings-option" data-ratio="fill">Fill</div>
-                        <div class="settings-option" data-ratio="crop">Crop</div>
+            </div>
+
+            <!-- Loading Spinner (hidden by default) -->
+            <div id="videoLoadingSpinner" class="loading-spinner"></div>
+            
+            <!-- Error Dialog (hidden by default) -->
+            <div id="videoErrorDialog" class="error-dialog">
+                <h4 class="text-xl font-bold mb-2">Streaming Error</h4>
+                <p>Failed to load the video stream. The server might be down or the URL is invalid.</p>
+                <button id="closeErrorBtn" class="mt-4 py-2 px-4 bg-teal-500 rounded-lg font-semibold hover:bg-teal-600 transition-colors" data-focusable="true">OK</button>
+            </div>
+
+            <video class="w-full h-full video-fit-contain" id="videoPlayer"></video>
+
+            <!-- Custom Video Controls -->
+            <div id="videoControls" class="custom-video-controls">
+                <button id="playPauseBtn" class="video-control-btn text-2xl" data-focusable="true">▶</button>
+                <div class="seek-bar-container">
+                    <div id="seekBar" class="seek-bar" data-focusable="true">
+                        <div id="seekBarFilled" class="seek-bar-filled"></div>
                     </div>
                 </div>
+                <span id="currentTime">00:00</span>
+                <span>/</span>
+                <span id="duration">00:00</span>
+                <!-- New Video Fit button and menu -->
+                <div class="relative">
+                    <button id="videoFitBtn" class="video-control-btn text-xl" data-focusable="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                    </button>
+                    <div id="videoFitMenu" class="absolute bottom-full mb-2 right-0 w-32 bg-gray-800 rounded-lg shadow-lg hidden">
+                        <button class="video-fit-option w-full text-left px-4 py-2 hover:bg-gray-700 rounded-t-lg" data-fit="contain" data-focusable="true">Fit</button>
+                        <button class="video-fit-option w-full text-left px-4 py-2 hover:bg-gray-700" data-fit="cover" data-focusable="true">Fill</button>
+                        <button class="video-fit-option w-full text-left px-4 py-2 hover:bg-gray-700" data-fit="fill" data-focusable="true">Stretch</button>
+                        <button class="video-fit-option w-full text-left px-4 py-2 hover:bg-gray-700 rounded-b-lg" data-fit="auto" data-focusable="true">Auto</button>
+                    </div>
+                </div>
+                <!-- New Episodes button -->
+                <button id="episodesBtn" class="video-control-btn text-xl" data-focusable="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list-ordered"><line x1="10" x2="21" y1="6" y2="6"/><line x1="10" x2="21" y1="12" y2="12"/><line x1="10" x2="21" y1="18" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-2"/></svg>
+                </button>
+                <button id="fullscreenBtn" class="video-control-btn text-xl" data-focusable="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-maximize">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                        <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+                        <path d="M16 21h3a2 0 0 0 2-2v-3" />
+                        <path d="M8 21H5a2 0 0 1-2-2v-3" />
+                    </svg>
+                </button>
             </div>
-
-            <!-- Screen Lock Button -->
-            <button id="screen-lock-button">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-lock"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </button>
         </div>
     </div>
 
-    <!-- HLS.js library for handling HTTP Live Streaming -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <!-- Plyr.js library for the video player UI -->
-    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
 
+    <!-- JavaScript for fetching data and rendering the UI -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Get references to all necessary DOM elements
-            const video = document.getElementById('player');
-            const urlInput = document.getElementById('url-input');
-            const loadButton = document.getElementById('load-button');
-            const statusMessage = document.getElementById('status-message');
-            const loadingSpinner = document.getElementById('loading-spinner');
-            const messageText = document.getElementById('message-text');
-            const episodeListContainer = document.getElementById('episode-list-container');
-            const episodeToggle = document.getElementById('episode-toggle');
-            const episodeList = document.getElementById('episode-list');
-            const playerContainer = document.getElementById('player-container');
-            const rewindButton = document.getElementById('rewind-button');
-            const forwardButton = document.getElementById('forward-button');
-            const screenLockButton = document.getElementById('screen-lock-button');
+            // Base URL for the backend API.
+            const API_BASE_URL = 'https://future-ester-seeutech-645c6129.koyeb.app/api';
 
-            const customSettingsMenu = document.getElementById('custom-settings-menu');
-            const qualityOptions = document.getElementById('quality-options');
-            const audioOptions = document.getElementById('audio-options');
-            const ratioOptions = document.getElementById('ratio-options');
-
-            let plyrInstance = null;
-            let hlsInstance = null;
+            // DOM elements
+            const headerContainer = document.getElementById('header-container');
+            const searchInput = document.getElementById('search-input');
+            const statsContainer = document.getElementById('stats-container');
+            const contentArea = document.getElementById('content-area');
+            const loadingMessage = document.getElementById('loading-message');
+            const errorMessage = document.getElementById('error-message');
+            const mediaGrid = document.getElementById('media-grid');
+            const moviesTab = document.getElementById('movies-tab');
+            const seriesTab = document.getElementById('series-tab');
+            const videoModal = document.getElementById('videoModal');
+            const videoPlayer = document.getElementById('videoPlayer');
+            const videoPlayerWrapper = document.getElementById('videoPlayerWrapper');
             
-            // Function to display a status message to the user
-            const showStatus = (text, isError = false) => {
-                statusMessage.classList.remove('hidden');
-                loadingSpinner.classList.add('hidden');
-                messageText.classList.remove('hidden');
-                messageText.textContent = text;
-                messageText.style.color = isError ? '#f87171' : '#e2e8f0';
-            };
+            // Custom video player controls
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            const seekBar = document.getElementById('seekBar');
+            const seekBarFilled = document.getElementById('seekBarFilled');
+            const currentTimeSpan = document.getElementById('currentTime');
+            const durationSpan = document.getElementById('duration');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            const episodesBtn = document.getElementById('episodesBtn');
+            const videoFitBtn = document.getElementById('videoFitBtn');
+            const videoFitMenu = document.getElementById('videoFitMenu');
+            const closePlayerBtn = document.getElementById('closePlayerBtn');
 
-            // Function to show the loading state with a spinner
-            const showLoading = () => {
-                statusMessage.classList.remove('hidden');
-                loadingSpinner.classList.remove('hidden');
-                messageText.classList.remove('hidden');
-                messageText.textContent = 'Loading video...';
-                messageText.style.color = '#e2e8f0';
-            };
-
-            // Function to hide all status messages
-            const hideStatus = () => {
-                statusMessage.classList.add('hidden');
-            };
+            // Video info and loading elements
+            const videoInfoOverlay = document.getElementById('videoInfoOverlay');
+            const videoInfoThumbnail = document.getElementById('videoInfoThumbnail');
+            const videoInfoTitle = document.getElementById('videoInfoTitle');
+            const videoLoadingSpinner = document.getElementById('videoLoadingSpinner');
             
-            // Function to populate the custom settings menu dynamically with quality levels and audio tracks from HLS
-            const populateSettingsMenu = () => {
-                if (!hlsInstance) return;
-
-                // Clear previous options to prevent duplicates
-                qualityOptions.querySelectorAll('div:not(.settings-heading)').forEach(el => el.remove());
-                audioOptions.querySelectorAll('div:not(.settings-heading)').forEach(el => el.remove());
-
-                // Populate Quality options
-                if (hlsInstance.levels.length > 0) {
-                    // Create an "Auto" option
-                    const autoOption = document.createElement('div');
-                    autoOption.textContent = 'Auto';
-                    autoOption.classList.add('settings-option', 'py-1', 'px-2', 'rounded-md', 'cursor-pointer');
-                    if (hlsInstance.currentLevel === -1) {
-                        autoOption.classList.add('active');
-                    }
-                    autoOption.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        hlsInstance.currentLevel = -1; // -1 for auto
-                        qualityOptions.querySelectorAll('.settings-option').forEach(el => el.classList.remove('active'));
-                        autoOption.classList.add('active');
-                    });
-                    qualityOptions.appendChild(autoOption);
-
-                    hlsInstance.levels.forEach((level, index) => {
-                        const option = document.createElement('div');
-                        const resolution = `${level.height}p`;
-                        option.textContent = resolution;
-                        option.classList.add('settings-option', 'py-1', 'px-2', 'rounded-md', 'cursor-pointer');
-                        if (index === hlsInstance.currentLevel) {
-                            option.classList.add('active');
-                        }
-                        option.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            hlsInstance.currentLevel = index;
-                            qualityOptions.querySelectorAll('.settings-option').forEach(el => el.classList.remove('active'));
-                            option.classList.add('active');
-                        });
-                        qualityOptions.appendChild(option);
-                    });
-                } else {
-                    // Display a message if no quality options are available
-                    const info = document.createElement('div');
-                    info.textContent = 'No quality options.';
-                    info.classList.add('text-sm', 'text-gray-400', 'py-1', 'px-2');
-                    qualityOptions.appendChild(info);
-                }
-
-                // Populate Audio Tracks
-                if (hlsInstance.audioTracks.length > 1) {
-                    hlsInstance.audioTracks.forEach((track, index) => {
-                        const option = document.createElement('div');
-                        option.textContent = track.name || `Track ${index + 1}`; // Use track name or a default
-                        option.classList.add('settings-option', 'py-1', 'px-2', 'rounded-md', 'cursor-pointer');
-                        if (index === hlsInstance.audioTrack) {
-                            option.classList.add('active');
-                        }
-                        option.addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            hlsInstance.audioTrack = index;
-                            audioOptions.querySelectorAll('.settings-option').forEach(el => el.classList.remove('active'));
-                            option.classList.add('active');
-                        });
-                        audioOptions.appendChild(option);
-                    });
-                } else {
-                    const info = document.createElement('div');
-                    info.textContent = 'No additional audio tracks.';
-                    info.classList.add('text-sm', 'text-gray-400', 'py-1', 'px-2');
-                    audioOptions.appendChild(info);
-                }
-            };
+            // Episode list overlay
+            const episodeOverlay = document.getElementById('episodeOverlay');
+            const episodeSelector = document.getElementById('episodeSelector');
+            const closeEpisodeOverlayBtn = document.getElementById('closeEpisodeOverlayBtn');
             
-            // Function to populate the episode list dynamically (currently with placeholder data)
-            const populateEpisodes = () => {
-                // Placeholder for episode data - this would typically come from a JSON file or API
-                const episodes = [
-                    { name: 'Episode 1: The Beginning', url: 'http://weekly-susie-school1660440-9f75b68d.koyeb.app/dl/68985d205de096b7841b89f9' },
-                    { name: 'Episode 2: The Journey', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
-                    { name: 'Episode 3: The Climax', url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_gallery_ad_2.m3u8' },
-                ];
+            // Error dialog
+            const videoErrorDialog = document.getElementById('videoErrorDialog');
+            const closeErrorBtn = document.getElementById('closeErrorBtn');
+
+            // Store the fetched data and current state
+            let allMovies = [];
+            let allSeries = [];
+            let currentSeries = null;
+            let activeTab = 'movies';
+            let currentPlayingUrl = '';
+            let currentMedia = null;
+            let controlsTimeout = null;
+
+            // Remote control navigation state
+            let focusableElements = [];
+            let currentFocusIndex = -1;
+            let videoControlsFocused = false;
+
+            // Function to handle remote control navigation
+            const setupRemoteNavigation = () => {
+                // Find all focusable elements on the page
+                focusableElements = Array.from(document.querySelectorAll('[data-focusable="true"]'));
+                const mediaCards = Array.from(document.querySelectorAll('.media-card'));
+                focusableElements = focusableElements.concat(mediaCards);
                 
-                // Clear existing list
-                episodeList.innerHTML = '';
+                // Set initial focus
+                if (focusableElements.length > 0) {
+                    currentFocusIndex = 0;
+                    focusableElements[currentFocusIndex].focus();
+                }
 
-                // Populate with new data
-                episodes.forEach(ep => {
-                    const li = document.createElement('li');
-                    const button = document.createElement('button');
-                    button.textContent = ep.name;
-                    button.classList.add('episode-button');
-                    button.addEventListener('click', () => {
-                        urlInput.value = ep.url;
-                        loadVideo(ep.url);
-                        episodeListContainer.classList.remove('show');
-                    });
-                    li.appendChild(button);
-                    episodeList.appendChild(li);
+                document.addEventListener('keydown', (e) => {
+                    if (videoModal.classList.contains('hidden')) {
+                        // Main content navigation
+                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            if (focusableElements[currentFocusIndex]) {
+                                focusableElements[currentFocusIndex].blur();
+                            }
+                            
+                            let nextIndex = currentFocusIndex;
+                            if (e.key === 'ArrowDown') nextIndex = (currentFocusIndex + 1) % focusableElements.length;
+                            if (e.key === 'ArrowUp') nextIndex = (currentFocusIndex - 1 + focusableElements.length) % focusableElements.length;
+                            
+                            // For left/right, try to find an element on the same "row" or "level"
+                            // This is a simple implementation, a more robust one would involve calculating positions
+                            if (e.key === 'ArrowRight' && currentFocusIndex < focusableElements.length - 1) nextIndex++;
+                            if (e.key === 'ArrowLeft' && currentFocusIndex > 0) nextIndex--;
+                            
+                            currentFocusIndex = nextIndex;
+                            focusableElements[currentFocusIndex].focus();
+                        } else if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (focusableElements[currentFocusIndex]) {
+                                focusableElements[currentFocusIndex].click();
+                            }
+                        }
+                    } else {
+                        // Video player navigation
+                        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                            // Up/Down on the remote should navigate the episode list
+                            if (episodeOverlay.classList.contains('visible')) {
+                                const episodeItems = Array.from(episodeSelector.querySelectorAll('.episode-list-item'));
+                                if (episodeItems.length > 0) {
+                                    let episodeFocusIndex = episodeItems.findIndex(item => item === document.activeElement);
+                                    if (e.key === 'ArrowDown') {
+                                        episodeFocusIndex = (episodeFocusIndex + 1) % episodeItems.length;
+                                    } else if (e.key === 'ArrowUp') {
+                                        episodeFocusIndex = (episodeFocusIndex - 1 + episodeItems.length) % episodeItems.length;
+                                    }
+                                    episodeItems[episodeFocusIndex].focus();
+                                }
+                            }
+                        } else if (e.key === 'ArrowLeft') {
+                            videoPlayer.currentTime -= 10; // Seek backward 10 seconds
+                        } else if (e.key === 'ArrowRight') {
+                            videoPlayer.currentTime += 10; // Seek forward 10 seconds
+                        } else if (e.key === 'Enter') {
+                            if (document.activeElement.id === 'playPauseBtn') {
+                                playPauseVideo();
+                            } else if (document.activeElement.id === 'fullscreenBtn') {
+                                toggleFullscreen();
+                            } else if (document.activeElement.id === 'episodesBtn') {
+                                toggleEpisodeOverlay();
+                            } else if (document.activeElement.classList.contains('episode-list-item')) {
+                                document.activeElement.click();
+                            } else if (document.activeElement.id === 'closeErrorBtn') {
+                                hideVideoError();
+                            } else if (document.activeElement.id === 'videoFitBtn') {
+                                videoFitMenu.classList.toggle('hidden');
+                            } else if (document.activeElement.classList.contains('video-fit-option')) {
+                                changeVideoFit(document.activeElement.dataset.fit);
+                                videoFitMenu.classList.add('hidden');
+                            }
+                        } else if (e.key === 'Escape') {
+                            if (videoErrorDialog.classList.contains('visible')) {
+                                hideVideoError();
+                            } else if (episodeOverlay.classList.contains('visible')) {
+                                toggleEpisodeOverlay();
+                            } else {
+                                closePlayer();
+                            }
+                        }
+                    }
                 });
             };
 
-            // Main function to load the video from a given URL
-            const loadVideo = (url) => {
-                if (!url) {
-                    showStatus('Please enter a valid video URL.', true);
-                    return;
-                }
+            // Function to fetch all data from the API
+            const fetchAllData = async () => {
+                loadingMessage.classList.remove('hidden');
+                try {
+                    const [moviesResponse, seriesResponse, statsResponse] = await Promise.all([
+                        fetch(`${API_BASE_URL}/movies`),
+                        fetch(`${API_BASE_URL}/series`),
+                        fetch(`${API_BASE_URL}/stats`)
+                    ]);
+                    
+                    if (!moviesResponse.ok || !seriesResponse.ok || !statsResponse.ok) {
+                        throw new Error('One or more API responses were not successful.');
+                    }
 
-                // Destroy existing instances to prevent conflicts or memory leaks
-                if (plyrInstance) {
-                    plyrInstance.destroy();
-                    plyrInstance = null;
-                }
-                if (hlsInstance) {
-                    hlsInstance.destroy();
-                    hlsInstance = null;
-                }
-
-                // Show loading spinner
-                showLoading();
-
-                // Check if HLS is supported by the browser
-                if (Hls.isSupported()) {
-                    hlsInstance = new Hls();
-                    hlsInstance.attachMedia(video);
-
-                    hlsInstance.on(Hls.Events.MEDIA_ATTACHED, function () {
-                        hlsInstance.loadSource(url);
-                    });
-
-                    // Listen for HLS stream errors for robust playback
-                    hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-                        if (data.fatal) {
-                            showStatus(`Error: ${data.details}. Trying to recover...`, true);
-                            switch (data.type) {
-                                case Hls.ErrorTypes.NETWORK_ERROR:
-                                case Hls.ErrorTypes.MEDIA_ERROR:
-                                    hlsInstance.recoverMediaError();
-                                    break;
-                                default:
-                                    hlsInstance.destroy();
-                                    break;
-                            }
-                        }
-                    });
-
-                    hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-                        console.log('Manifest parsed. Initializing Plyr...');
-                        hideStatus(); // Hide loading message
-                        plyrInstance = new Plyr(video, {
-                            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen', 'settings'],
-                            settings: ['speed'], // We will handle quality and audio with our custom menu
-                            speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] },
-                        });
-
-                        // Find the Plyr settings button and add a click event listener to show our custom menu
-                        const settingsButton = document.querySelector('.plyr__controls .plyr__controls__item--settings');
-                        if (settingsButton) {
-                            settingsButton.addEventListener('click', (e) => {
-                                e.stopPropagation(); // Prevent the custom menu from closing immediately
-                                customSettingsMenu.classList.toggle('show');
-                            });
-                        }
-
-                        // Close the custom menu when clicking anywhere else
-                        document.addEventListener('click', (e) => {
-                           if (!customSettingsMenu.contains(e.target) && settingsButton && !settingsButton.contains(e.target)) {
-                               customSettingsMenu.classList.remove('show');
-                           }
-                        });
-                        
-                        // Dynamically populate settings and episodes after manifest is parsed
-                        populateSettingsMenu();
-                        populateEpisodes();
-                    });
-
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Fallback for native HLS support (e.g., Safari on iOS/macOS)
-                    video.src = url;
-                    plyrInstance = new Plyr(video, {
-                        controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
-                    });
-                    hideStatus();
-                } else {
-                    showStatus('HLS streaming is not supported on this browser.', true);
+                    allMovies = await moviesResponse.json();
+                    allSeries = await seriesResponse.json();
+                    const stats = await statsResponse.json();
+                    updateStats(stats);
+                    loadingMessage.classList.add('hidden');
+                } catch (e) {
+                    console.error("Failed to fetch data:", e);
+                    errorMessage.classList.remove('hidden');
+                    loadingMessage.classList.add('hidden');
                 }
             };
             
+            // Function to handle search input
+            const handleSearch = async () => {
+                const query = searchInput.value.toLowerCase().trim();
+
+                // Hide all content until at least 3 characters are typed
+                if (query.length < 3) {
+                    // Hide the main content area and show the search container
+                    contentArea.classList.add('hidden');
+                    headerContainer.classList.add('hidden');
+                    mediaGrid.innerHTML = '';
+                    // The main-container is already displayed, so no need to change it
+                    return;
+                }
+
+                // Show content area and header
+                contentArea.classList.remove('hidden');
+                headerContainer.classList.remove('hidden');
+                
+                // If data hasn't been fetched yet, fetch it.
+                if (allMovies.length === 0 && allSeries.length === 0) {
+                    await fetchAllData();
+                }
+
+                // Filter the fetched data based on the query
+                const filteredMovies = allMovies.filter(movie => movie.name.toLowerCase().includes(query));
+                const filteredSeries = allSeries.filter(series => series.name.toLowerCase().includes(query));
+                
+                // Update stats based on filtered data
+                const filteredStats = {
+                    movies: filteredMovies.length,
+                    series: filteredSeries.length,
+                    episodes: filteredSeries.reduce((total, series) => total + (series.seasons?.length || 0), 0) // Simplified episode count
+                };
+                updateStats(filteredStats);
+
+                // Render the filtered content
+                renderContent(filteredMovies, filteredSeries);
+            };
+
+            // Function to update the stats in the header
+            const updateStats = (currentStats) => {
+                statsContainer.innerHTML = `
+                    <div class="flex flex-col items-center">
+                        <span class="text-2xl font-bold text-teal-400">${currentStats.movies}</span>
+                        <span class="text-sm text-gray-400">Movies</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-2xl font-bold text-purple-400">${currentStats.series}</span>
+                        <span class="text-sm text-gray-400">Series</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-2xl font-bold text-orange-400">${currentStats.episodes}</span>
+                        <span class="text-sm text-gray-400">Episodes</span>
+                    </div>
+                `;
+            };
+
+            // Function to render a single media card element
+            const createMediaCard = (item, type) => {
+                const card = document.createElement('div');
+                card.className = 'media-card relative w-full overflow-hidden bg-gray-800 rounded-2xl shadow-xl cursor-pointer focusable';
+                card.setAttribute('tabindex', '0'); // Make div focusable
+                card.setAttribute('data-focusable', 'true');
+
+                const thumbnail = item.thumbnail || 'https://placehold.co/400x600/1f2937/d1d5db?text=No+Image';
+                const seasonsInfo = type === 'series' && item.seasons
+                    ? `<p class="text-sm text-gray-400 mt-1">${item.seasons.length} ${item.seasons.length > 1 ? 'seasons' : 'season'}</p>`
+                    : '';
+
+                card.innerHTML = `
+                    <img src="${thumbnail}" alt="${item.name}" class="w-full h-80 object-cover" onerror="this.onerror=null;this.src='https://placehold.co/400x600/1f2937/d1d5db?text=No+Image';">
+                    <div class="p-4">
+                        <h3 class="text-lg font-semibold text-white truncate">${item.name}</h3>
+                        ${seasonsInfo}
+                    </div>
+                `;
+
+                // Add click event to play video or load series details
+                if (type === 'series') {
+                    card.addEventListener('click', () => loadSeriesDetails(item._id));
+                } else {
+                    card.addEventListener('click', () => playVideo(item));
+                }
+
+                return card;
+            };
+
+            // Function to render the media content based on the active tab
+            const renderContent = (moviesToRender, seriesToRender) => {
+                mediaGrid.innerHTML = ''; // Clear previous content
+
+                const dataToRender = activeTab === 'movies' ? moviesToRender : seriesToRender;
+                const type = activeTab === 'movies' ? 'movie' : 'series';
+                const emptyMessage = `
+                    <div class="col-span-full text-center text-gray-500 text-lg py-12">
+                        No ${activeTab} found for this search query.
+                    </div>
+                `;
+
+                if (dataToRender.length > 0) {
+                    dataToRender.forEach(item => {
+                        const card = createMediaCard(item, type);
+                        mediaGrid.appendChild(card);
+                    });
+                } else {
+                    mediaGrid.innerHTML = emptyMessage;
+                }
+                
+                // Re-setup remote navigation for new elements
+                setupRemoteNavigation();
+            };
+            
+            // Function to fetch and display episodes for a series, then play the first one
+            const loadSeriesDetails = async (seriesId) => {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/series/${seriesId}`);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch series details.');
+                    }
+                    currentSeries = await response.json();
+                    
+                    if (currentSeries.seasons && currentSeries.seasons.length > 0 && 
+                        currentSeries.seasons[0].episodes && currentSeries.seasons[0].episodes.length > 0) {
+                        const firstEpisode = {
+                            ...currentSeries.seasons[0].episodes[0],
+                            thumbnail: currentSeries.thumbnail,
+                            seriesName: currentSeries.name
+                        };
+                        playVideo(firstEpisode, 'series');
+                    } else {
+                        console.error('No episodes available for this series.');
+                    }
+                } catch (e) {
+                    console.error('Error loading series details:', e);
+                    showVideoError();
+                }
+            };
+
+            // Function to handle tab switching
+            const switchTab = (tab) => {
+                activeTab = tab;
+                if (tab === 'movies') {
+                    moviesTab.classList.add('text-white', 'border-b-2', 'border-teal-400');
+                    seriesTab.classList.remove('text-white', 'border-b-2', 'border-purple-400');
+                    seriesTab.classList.add('text-gray-400', 'hover:text-gray-200');
+                } else {
+                    seriesTab.classList.add('text-white', 'border-b-2', 'border-purple-400');
+                    moviesTab.classList.remove('text-white', 'border-b-2', 'border-teal-400');
+                    moviesTab.classList.add('text-gray-400', 'hover:text-gray-200');
+                }
+
+                // Re-render content based on the current search query
+                const query = searchInput.value.toLowerCase().trim();
+                const filteredMovies = allMovies.filter(movie => movie.name.toLowerCase().includes(query));
+                const filteredSeries = allSeries.filter(series => series.name.toLowerCase().includes(query));
+                renderContent(filteredMovies, filteredSeries);
+            };
+
+            // Function to handle playing the video
+            window.playVideo = (mediaItem, type = 'movie') => {
+                if (!mediaItem || !mediaItem.streamingUrl) {
+                    showVideoError();
+                    return;
+                }
+                
+                videoPlayer.src = mediaItem.streamingUrl;
+                currentMedia = mediaItem; // Store the current media item
+                videoModal.classList.remove('hidden');
+                
+                if (type === 'series' && currentSeries) {
+                    episodesBtn.classList.remove('hidden');
+                    displayEpisodeSelector(mediaItem.streamingUrl);
+                } else {
+                    episodesBtn.classList.add('hidden');
+                }
+                
+                // Play the video and handle promise rejection
+                videoPlayer.play().then(() => {
+                    hideVideoError();
+                }).catch(e => {
+                    console.error('Error playing video:', e);
+                    showVideoError();
+                });
+            };
+
+            // Function to display the list of episodes in the overlay
+            window.displayEpisodeSelector = (currentUrl) => {
+                episodeSelector.innerHTML = ''; // Clear previous content
+                currentSeries.seasons.forEach(season => {
+                    const seasonTitle = document.createElement('h4');
+                    seasonTitle.className = 'text-lg font-semibold mt-4 mb-2 text-teal-400';
+                    seasonTitle.textContent = `Season ${season.seasonNumber}`;
+                    episodeSelector.appendChild(seasonTitle);
+
+                    season.episodes.forEach(episode => {
+                        const button = document.createElement('button');
+                        const isCurrent = episode.streamingUrl === currentUrl;
+                        
+                        button.className = `episode-list-item w-full text-left p-3 rounded-lg transition-colors duration-200 hover:bg-gray-700 focusable ${isCurrent ? 'active bg-gray-700' : ''}`;
+                        button.setAttribute('data-focusable', 'true');
+                        button.setAttribute('tabindex', '0');
+                        button.innerHTML = `
+                            <div class="flex items-center">
+                                <span class="font-bold mr-2">E${episode.episodeNumber}:</span>
+                                <span class="truncate">${episode.title}</span>
+                            </div>
+                        `;
+                        button.onclick = () => {
+                            const newMediaItem = {
+                                ...episode,
+                                thumbnail: currentSeries.thumbnail
+                            };
+                            currentMedia = newMediaItem;
+                            switchEpisode(newMediaItem);
+                        }
+                        episodeSelector.appendChild(button);
+                    });
+                });
+            };
+
+            // Function to toggle the visibility of the episode overlay
+            window.toggleEpisodeOverlay = () => {
+                episodeOverlay.classList.toggle('visible');
+            }
+
+            // Function to switch to a new episode
+            window.switchEpisode = (mediaItem) => {
+                if (!mediaItem || !mediaItem.streamingUrl) {
+                    showVideoError();
+                    return;
+                }
+                videoPlayer.src = mediaItem.streamingUrl;
+                videoPlayer.play().then(() => {
+                    hideVideoError();
+                }).catch(e => {
+                    console.error('Error playing video:', e);
+                    showVideoError();
+                });
+                displayEpisodeSelector(mediaItem.streamingUrl); // Re-render to highlight the new episode
+                toggleEpisodeOverlay(); // Close the overlay after selection
+            };
+
+            // Function to close the video player modal
+            window.closePlayer = () => {
+                videoPlayer.pause();
+                videoPlayer.src = '';
+                videoModal.classList.add('hidden');
+                currentSeries = null;
+                currentMedia = null;
+                clearTimeout(controlsTimeout);
+                hideVideoError(); // Also hide any error dialog
+                
+                // Exit fullscreen if active
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                }
+            };
+            
+            // Function to show the video error dialog
+            window.showVideoError = () => {
+                videoErrorDialog.classList.add('visible');
+                // Ensure other overlays are hidden
+                videoLoadingSpinner.classList.remove('visible');
+                videoInfoOverlay.classList.remove('visible');
+                videoPlayer.pause();
+            };
+            
+            // Function to hide the video error dialog
+            window.hideVideoError = () => {
+                videoErrorDialog.classList.remove('visible');
+            };
+
+            // Video player control functions
+            const formatTime = (timeInSeconds) => {
+                const minutes = Math.floor(timeInSeconds / 60);
+                const seconds = Math.floor(timeInSeconds % 60);
+                return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            };
+            
+            const playPauseVideo = () => {
+                if (videoPlayer.paused) {
+                    videoPlayer.play().catch(e => {
+                        console.error('Error resuming video:', e);
+                        showVideoError();
+                    });
+                } else {
+                    videoPlayer.pause();
+                }
+            };
+
+            const showControls = () => {
+                videoPlayerWrapper.classList.add('show-controls');
+                clearTimeout(controlsTimeout);
+                controlsTimeout = setTimeout(() => {
+                    videoPlayerWrapper.classList.remove('show-controls');
+                }, 3000);
+            };
+            
+            const toggleFullscreen = () => {
+                if (!document.fullscreenElement) {
+                    videoModal.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            };
+
+            const changeVideoFit = (fit) => {
+                // Remove all previous fit classes
+                videoPlayer.classList.remove('video-fit-fill', 'video-fit-contain', 'video-fit-cover', 'video-fit-auto');
+                // Add the selected fit class
+                videoPlayer.classList.add(`video-fit-${fit}`);
+            };
+
             // Event listeners
-            loadButton.addEventListener('click', () => {
-                loadVideo(urlInput.value);
+            searchInput.addEventListener('input', handleSearch);
+            moviesTab.addEventListener('click', () => switchTab('movies'));
+            seriesTab.addEventListener('click', () => switchTab('series'));
+            
+            // Video player events
+            playPauseBtn.addEventListener('click', playPauseVideo);
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+            episodesBtn.addEventListener('click', toggleEpisodeOverlay);
+            videoFitBtn.addEventListener('click', () => videoFitMenu.classList.toggle('hidden'));
+            closePlayerBtn.addEventListener('click', closePlayer);
+            closeEpisodeOverlayBtn.addEventListener('click', toggleEpisodeOverlay);
+            
+            // Event listeners for the video fit menu options
+            document.querySelectorAll('.video-fit-option').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    changeVideoFit(e.target.dataset.fit);
+                    videoFitMenu.classList.add('hidden');
+                });
             });
 
-            episodeToggle.addEventListener('click', () => {
-                episodeListContainer.classList.toggle('show');
+            // Add touch event listeners for mobile/touchscreens
+            videoPlayerWrapper.addEventListener('touchstart', showControls);
+            videoPlayerWrapper.addEventListener('touchend', showControls);
+
+            // Add mouse events for non-touchscreens
+            videoPlayerWrapper.addEventListener('mousemove', showControls);
+            videoPlayerWrapper.addEventListener('mouseleave', () => {
+                clearTimeout(controlsTimeout);
+                controlsTimeout = setTimeout(() => {
+                    videoPlayerWrapper.classList.remove('show-controls');
+                }, 1000); // Give a little buffer before hiding
+            });
+            
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                durationSpan.textContent = formatTime(videoPlayer.duration);
             });
 
-            // Screen Ratio event listeners
-            ratioOptions.addEventListener('click', (e) => {
-                const target = e.target;
-                if (target.classList.contains('settings-option')) {
-                    const ratio = target.dataset.ratio;
-                    ratioOptions.querySelectorAll('.settings-option').forEach(el => el.classList.remove('active'));
-                    target.classList.add('active');
+            videoPlayer.addEventListener('timeupdate', () => {
+                const progress = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                seekBarFilled.style.width = `${progress}%`;
+                currentTimeSpan.textContent = formatTime(videoPlayer.currentTime);
+            });
 
-                    switch(ratio) {
-                        case 'fits':
-                            video.style.objectFit = 'contain';
-                            break;
-                        case 'fill':
-                            video.style.objectFit = 'fill';
-                            break;
-                        case 'crop':
-                            video.style.objectFit = 'cover';
-                            break;
+            seekBar.addEventListener('click', (e) => {
+                const rect = seekBar.getBoundingClientRect();
+                const seekTime = ((e.clientX - rect.left) / rect.width) * videoPlayer.duration;
+                videoPlayer.currentTime = seekTime;
+            });
+            
+            videoPlayer.addEventListener('play', () => {
+                playPauseBtn.textContent = '⏸';
+                videoInfoOverlay.classList.remove('visible');
+                videoLoadingSpinner.classList.remove('visible');
+                hideVideoError(); // Hide error on successful playback
+            });
+            
+            videoPlayer.addEventListener('pause', () => {
+                playPauseBtn.textContent = '▶';
+                // Show the info overlay on pause, but only if the video is not at the end
+                if (videoPlayer.currentTime < videoPlayer.duration && !videoErrorDialog.classList.contains('visible')) {
+                    videoInfoOverlay.classList.add('visible');
+                    // Update the overlay with current media info
+                    if (currentMedia) {
+                        videoInfoThumbnail.src = currentMedia.thumbnail || 'https://placehold.co/400x600/1f2937/d1d5db?text=No+Image';
+                        videoInfoTitle.textContent = currentMedia.name || currentMedia.title;
                     }
                 }
             });
 
-            // Screen Lock toggle logic
-            screenLockButton.addEventListener('click', () => {
-                playerContainer.classList.toggle('player-locked');
+            videoPlayer.addEventListener('waiting', () => {
+                videoLoadingSpinner.classList.add('visible');
             });
 
-            // Rewind and Forward button logic
-            rewindButton.addEventListener('click', () => {
-                if (video.currentTime > 10) {
-                    video.currentTime -= 10;
-                } else {
-                    video.currentTime = 0;
-                }
-            });
-
-            forwardButton.addEventListener('click', () => {
-                video.currentTime += 10;
+            videoPlayer.addEventListener('playing', () => {
+                videoLoadingSpinner.classList.remove('visible');
             });
             
-            // Initial load of the default video and episodes
-            loadVideo(urlInput.value);
-            populateEpisodes();
+            videoPlayer.addEventListener('stalled', () => {
+                videoLoadingSpinner.classList.add('visible');
+            });
+
+
+            // Setup remote navigation on initial load
+            setupRemoteNavigation();
         });
     </script>
 </body>
 </html>
+
 
